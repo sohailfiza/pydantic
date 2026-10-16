@@ -78,6 +78,12 @@ pub(crate) trait Input<'py>: fmt::Debug {
         None
     }
 
+    /// Whether this input is a JSON object key; such keys are always strings, even when
+    /// they were serialized from a non-string value (e.g. an int-valued enum member).
+    fn is_json_key(&self) -> bool {
+        false
+    }
+
     fn as_kwargs(&self, py: Python<'py>) -> Option<Bound<'py, PyDict>>;
 
     type Arguments<'a>: Arguments<'py>

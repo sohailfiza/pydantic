@@ -506,3 +506,24 @@ def test_strict_enum_wrap_json() -> None:
 
     assert v.validate_python(Animal.CAT) == Animal.CAT
     assert v.validate_json('"dog"') == Animal.DOG
+
+
+@pytest.mark.parametrize(
+    'values,json_key,expected_value',
+    [
+        ({'a': 200, 'b': 404}, '200', 200),
+        ({'a': 0.5, 'b': 1.5}, '0.5', 0.5),
+        ({'a': 1, 'b': 'b'}, '1', 1),
+        ({'a': 1, 'b': 'b'}, 'b', 'b'),
+    ],
+)
+def test_plain_enum_json_dict_keys(values, json_key, expected_value):
+    MyEnum = Enum('MyEnum', values)
+    v = SchemaValidator(
+        core_schema.dict_schema(
+            core_schema.enum_schema(MyEnum, list(MyEnum.__members__.values())), core_schema.int_schema()
+        )
+    )
+    assert v.validate_json(f'{{"{json_key}": 1}}') == {MyEnum(expected_value): 1}
+    with pytest.raises(ValidationError):
+        v.validate_json('{"999": 1}')

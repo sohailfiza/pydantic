@@ -2446,3 +2446,21 @@ def test_secret_str_none() -> None:
 
     assert Model().model_dump() == {'f': None}
     assert Model().model_dump_json() == '{"f":null}'
+
+
+def test_dict_non_str_enum_and_literal_keys_json_round_trip():
+    # https://github.com/pydantic/pydantic/issues/13988
+    class Status(Enum):
+        OK = 200
+        NOT_FOUND = 404
+
+    class Half(Enum):
+        HALF = 0.5
+
+    class Report(BaseModel):
+        counts: dict[Status, int]
+        halves: dict[Half, int]
+        literals: dict[Literal[1, 2], int]
+
+    r = Report(counts={Status.OK: 3, Status.NOT_FOUND: 1}, halves={Half.HALF: 1}, literals={1: 1})
+    assert Report.model_validate_json(r.model_dump_json()) == r

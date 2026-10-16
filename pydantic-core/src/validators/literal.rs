@@ -179,6 +179,26 @@ impl<T: Debug> LiteralLookup<T> {
             let id: usize = v.extract().unwrap();
             return Ok(Some((input, &self.values[id])));
         }
+
+        // JSON object keys are always strings, so non-string literals (e.g. `200` or `0.5`)
+        // are serialized as `"200"` / `"0.5"`; accept that form so dumped JSON round-trips
+        if input.is_json_key() {
+            if let Some(expected_ints) = &self.expected_int
+                && let Ok(either_int) = input.validate_int(false)
+                // a key too large for i64 can't match an `expected_int`, so don't propagate the overflow error
+                && let Ok(int) = either_int.into_inner().into_i64(py)
+                && let Some(id) = expected_ints.get(&int)
+            {
+                return Ok(Some((input, &self.values[*id])));
+            }
+            if let Some(expected_py_dict) = &self.expected_py_dict
+                && let Ok(either_float) = input.validate_float(false)
+                && let Ok(Some(v)) = expected_py_dict.bind(py).get_item(either_float.into_inner().as_f64())
+            {
+                let id: usize = v.extract().unwrap();
+                return Ok(Some((input, &self.values[id])));
+            }
+        }
         Ok(None)
     }
 

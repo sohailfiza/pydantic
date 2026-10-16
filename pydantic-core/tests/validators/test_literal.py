@@ -403,3 +403,24 @@ def test_enum_for_str() -> None:
     for val in [val_enum, val_str]:
         assert val.validate_python('a') == 'a'
         assert val.validate_python(S.a) == 'a'
+
+
+def test_literal_int_json_dict_keys():
+    v = SchemaValidator(core_schema.dict_schema(core_schema.literal_schema([1, 2]), core_schema.int_schema()))
+    assert v.validate_json('{"1": 1, "2": 2}') == {1: 1, 2: 2}
+    with pytest.raises(ValidationError, match='Input should be 1 or 2'):
+        v.validate_json('{"3": 1}')
+    with pytest.raises(ValidationError, match='Input should be 1 or 2'):
+        v.validate_json('{"99999999999999999999": 1}')
+
+
+def test_literal_int_json_value_not_coerced():
+    # only JSON object keys accept the string form of an int literal
+    v = SchemaValidator(core_schema.literal_schema([1, 2]))
+    with pytest.raises(ValidationError, match='Input should be 1 or 2'):
+        v.validate_json('"1"')
+
+
+def test_literal_str_key_wins_over_int():
+    v = SchemaValidator(core_schema.dict_schema(core_schema.literal_schema([1, '1']), core_schema.int_schema()))
+    assert v.validate_json('{"1": 1}') == {'1': 1}
